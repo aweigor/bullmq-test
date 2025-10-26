@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sender-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sender-worker
+  template:
+    metadata:
+      labels:
+        app: sender-worker
+    spec:
+      containers:
+        - name: worker
+          image: webhook-pipeline:latest
+          imagePullPolicy: Never # ← CRITICAL: This tells Kubernetes to use local image
+          command: ["node", "src/sender-worker.js"]
+          env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: SENDER_CONCURRENCY
+              value: "5"

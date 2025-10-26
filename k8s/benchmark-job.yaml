@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pipeline-benchmark
+spec:
+  template:
+    spec:
+      containers:
+        - name: benchmark
+          image: webhook-pipeline:latest
+          imagePullPolicy: Never # ← THIS IS CRITICAL
+          command: ["node", "src/benchmark.js"]
+          env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+      restartPolicy: Never
+  backoffLimit: 1

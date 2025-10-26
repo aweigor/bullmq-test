@@ -1,0 +1,27 @@
+{
+  "name": "bullmq-benchmark",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "benchmark": "node src/benchmark.js",
+    "pipeline-worker": "node src/pipeline-worker.js",
+    "sender-worker": "node src/sender-worker.js"
+  },
+  "dependencies": {
+    "bullmq": "^4.0.0",
+    "cli-table3": "^0.6.3",
+    "chalk": "^4.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aweigor/bullmq-benchmark.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aweigor/bullmq-benchmark/issues"
+  },
+  "homepage": "https://github.com/aweigor/bullmq-benchmark#readme"
+}
