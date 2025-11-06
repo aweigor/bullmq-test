@@ -2,26 +2,44 @@
 
 set -e
 
-echo "🚀 Building Docker image..."
-docker build -t webhook-pipeline:latest .
+echo "🔍 Checking OrbStack and Kubernetes status..."
 
-echo "🔧 Deploying to Kubernetes..."
-kubectl apply -f k8s/redis.yaml
+# Check if OrbStack is running
+if ! orbctl status > /dev/null 2>&1; then
+  echo "❌ OrbStack is not running. Please start OrbStack first."
+  exit 1
+fi
+
+# Check if Kubernetes is accessible
+if ! kubectl cluster-info > /dev/null 2>&1; then
+  echo "❌ Kubernetes is not accessible."
+  echo "   Please enable Kubernetes in OrbStack:"
+  echo "   1. Open OrbStack"
+  echo "   2. Go to Preferences → Kubernetes" 
+  echo "   3. Enable Kubernetes and click Apply"
+  exit 1
+fi
+
+echo "✅ OrbStack and Kubernetes are running"
+
+# docker build -t webhook-benchmark:latest .
+
+docker build --network=host -t webhook-benchmark:latest . && exit 0
+
+# echo "Trying with Alpine base..."
+# docker build -f Dockerfile.alpine -t webhook-benchmark:latest . && exit 0
+
+echo "🔧 Deploying Redis..."
+kubectl apply -f k8s/redis.yaml --validate=false
 
 echo "⏳ Waiting for Redis to be ready..."
 kubectl wait --for=condition=ready pod -l app=redis --timeout=120s
 
-echo "📦 Deploying workers with local image..."
-kubectl apply -f k8s/pipeline-worker.yaml
-kubectl apply -f k8s/sender-worker.yaml
+echo "✅ Redis is ready!"
 
-echo "🔍 Checking deployment status..."
-sleep 10
-kubectl get pods -l app=pipeline-worker
-kubectl get pods -l app=sender-worker
-
-echo "✅ Deployment complete!"
 echo ""
-echo "To check logs:"
-echo "  kubectl logs -l app=pipeline-worker --tail=10"
-echo "  kubectl logs -l app=sender-worker --tail=10"
+echo "To deploy workers and run benchmark:"
+echo "  kubectl apply -f k8s/pipeline-worker.yaml --validate=false"
+echo "  kubectl apply -f k8s/pipeline-worker-granular.yaml --validate=false"
+echo "  kubectl apply -f k8s/benchmark-job.yaml --validate=false"
+echo "  kubectl logs -f job/benchmark-runner"

@@ -6,35 +6,30 @@ const connection = {
   port: parseInt(process.env.REDIS_PORT) || 6379,
 };
 
-const pipelineWorker = new Worker(
-  "webhook-pipeline",
+const pipelineWorkerGranular = new Worker(
+  "webhook-pipeline-granular",
   async (job) => {
-    const { rawWebhook, middlewares, webhookId } = job.data;
+    const { rawWebhook, middleware, webhookId } = job.data;
     const startTime = process.hrtime.bigint();
 
     try {
       let processedWebhook = { ...rawWebhook };
       const timing = {};
 
-      // Process each middleware in sequence
-      for (const middlewareName of middlewares) {
-        const mwStart = process.hrtime.bigint();
+      const mwStart = process.hrtime.bigint();
 
-        if (syncMiddlewares[middlewareName]) {
-          // Sync middleware
-          processedWebhook = syncMiddlewares[middlewareName](processedWebhook);
-        } else if (asyncMiddlewares[middlewareName]) {
-          // Async middleware
-          processedWebhook = await asyncMiddlewares[middlewareName](
-            processedWebhook
-          );
-        } else {
-          throw new Error(`Unknown middleware: ${middlewareName}`);
-        }
-
-        const mwEnd = process.hrtime.bigint();
-        timing[middlewareName] = Number(mwEnd - mwStart) / 1000000;
+      if (syncMiddlewares[middleware]) {
+        // Sync middleware
+        processedWebhook = syncMiddlewares[middleware](processedWebhook);
+      } else if (asyncMiddlewares[middleware]) {
+        // Async middleware
+        processedWebhook = await asyncMiddlewares[middleware](processedWebhook);
+      } else {
+        throw new Error(`Unknown middleware: ${middleware}`);
       }
+
+      const mwEnd = process.hrtime.bigint();
+      timing[middleware] = Number(mwEnd - mwStart) / 1000000;
 
       const endTime = process.hrtime.bigint();
       const totalDuration = Number(endTime - startTime) / 1000000;
@@ -64,6 +59,6 @@ const pipelineWorker = new Worker(
   }
 );
 
-console.log("Pipeline worker started");
+console.log("Pipeline granular worker started");
 
-export { pipelineWorker };
+export { pipelineWorkerGranular };

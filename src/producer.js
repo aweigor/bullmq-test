@@ -9,7 +9,9 @@ const connection = {
 export class WebhookProducer {
   constructor() {
     this.pipelineQueue = new Queue("webhook-pipeline", { connection });
-    this.sendingQueue = new Queue("webhook-sending", { connection });
+    this.pipelineGranularQueue = new Queue("webhook-pipeline-granular", {
+      connection,
+    });
   }
 
   async produceWebhook(rawWebhook, middlewares = ["validate", "transform"]) {
@@ -56,6 +58,49 @@ export class WebhookProducer {
     }
   }
 
+  async produceWebhookGranular(rawWebhook, middleware) {
+    const startTime = process.hrtime.bigint();
+    const webhookId = randomUUID();
+
+    try {
+      const pipelineGranularJob = await this.pipelineGranularQueue.add(
+        "process-middleware-single",
+        {
+          rawWebhook,
+          webhookId,
+          middleware,
+          metadata: {
+            receivedAt: new Date().toISOString(),
+          },
+        },
+        {
+          jobId: `pipeline-${webhookId}-${middleware}`,
+          removeOnComplete: 100,
+        }
+      );
+
+      const endTime = process.hrtime.bigint();
+      const duration = Number(endTime - startTime) / 1000000;
+
+      return {
+        success: true,
+        webhookId,
+        jobId: pipelineGranularJob.id,
+        duration,
+      };
+    } catch (error) {
+      const endTime = process.hrtime.bigint();
+      const duration = Number(endTime - startTime) / 1000000;
+
+      return {
+        success: false,
+        webhookId,
+        error: error.message,
+        duration,
+      };
+    }
+  }
+
   async produceBulk(webhooks, middlewares = ["validate", "transform"]) {
     const results = [];
 
@@ -64,6 +109,20 @@ export class WebhookProducer {
       results.push(result);
     }
 
+    return results;
+  }
+
+  async produceBulkGranular(webhooks, middlewares = ["validate", "transform"]) {
+    const results = [];
+    for (const webhook of webhooks) {
+      for (const middleware of middlewares) {
+        const granularResult = await this.produceWebhookGranular(
+          webhook,
+          middleware
+        );
+        results.push(granularResult);
+      }
+    }
     return results;
   }
 }

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: pipeline-worker
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: pipeline-worker
@@ -23,4 +23,4 @@ spec:
             - name: REDIS_PORT
               value: "6379"
             - name: PIPELINE_CONCURRENCY
-              value: "3"
+              value: "1"
