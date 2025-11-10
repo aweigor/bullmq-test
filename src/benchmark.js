@@ -48,10 +48,11 @@ class PipelineBenchmark {
     return {
       name,
       middlewares: middlewares.join(", "),
-      throughput: Math.round(throughput * 100) / 100,
-      throughputGranular: Math.round(throughputGranular * 100) / 100,
-      avgDuration: Math.round(avgDuration * 100) / 100,
-      avgDurationGranular: Math.round(avgDurationGranular * 100) / 100,
+      throughput: Math.round(throughput * 100),
+      throughputGranular: Math.round(throughputGranular * 100),
+      avgDuration: Math.round(avgDuration * 100) / webhooks.length,
+      avgDurationGranular:
+        Math.round(avgDurationGranular * 100) / webhooks.length,
       totalDuration: Math.round(elapsedTime),
     };
   }
@@ -186,20 +187,22 @@ const scenarios = [
 async function main() {
   await new Promise((resolve) => setTimeout(resolve, 100));
 
-  const benchmark = new PipelineBenchmark();
-  const testWebhooks = generateWebhooks(100);
-  const results = [];
+  for (const amount of [100, 1000, 10000]) {
+    const benchmark = new PipelineBenchmark();
+    const testWebhooks = generateWebhooks(amount);
+    const results = [];
 
-  for (const scenario of scenarios) {
-    const result = await benchmark.runScenario(
-      scenario.name,
-      testWebhooks,
-      scenario.middlewares
-    );
-    results.push(result);
+    for (const scenario of scenarios) {
+      const result = await benchmark.runScenario(
+        scenario.name,
+        testWebhooks,
+        scenario.middlewares
+      );
+      results.push(result);
+    }
+
+    benchmark.printResults(results);
   }
-
-  benchmark.printResults(results);
 
   process.exit(0);
 }
