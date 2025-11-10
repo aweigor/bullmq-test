@@ -32,7 +32,6 @@ export class WebhookProducer {
         },
         {
           jobId: `pipeline-${webhookId}`,
-          removeOnComplete: 100,
         }
       );
 
@@ -75,7 +74,6 @@ export class WebhookProducer {
         },
         {
           jobId: `pipeline-${webhookId}-${middleware}`,
-          removeOnComplete: 100,
         }
       );
 

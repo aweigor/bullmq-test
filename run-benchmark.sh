@@ -16,10 +16,10 @@ kubectl delete job pipeline-benchmark --ignore-not-found=true > /dev/null 2>&1
 # Wait a moment for cleanup
 sleep 2
 
-echo "🚀 Starting new benchmark job..."
+echo "Starting new benchmark job..."
 kubectl apply -f k8s/benchmark-job.yaml
 
-echo "⏳ Waiting for benchmark pod to start..."
+echo "Waiting for benchmark pod to start..."
 for i in {1..30}; do
   POD_STATUS=$(kubectl get pods -l job-name=pipeline-benchmark -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Waiting")
   if [ "$POD_STATUS" = "Running" ] || [ "$POD_STATUS" = "Succeeded" ] || [ "$POD_STATUS" = "Failed" ]; then
@@ -30,12 +30,12 @@ for i in {1..30}; do
 done
 
 echo ""
-echo "📊 Current pod status:"
+echo "Current pod status:"
 kubectl get pods -l job-name=pipeline-benchmark
 
 echo ""
-echo "📋 Streaming logs:"
+echo "Streaming logs:"
 kubectl logs -f job/pipeline-benchmark
 
 echo ""
-echo "🎯 Benchmark completed!"
+echo "Benchmark completed!"

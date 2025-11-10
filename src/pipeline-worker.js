@@ -16,15 +16,12 @@ const pipelineWorker = new Worker(
       let processedWebhook = { ...rawWebhook };
       const timing = {};
 
-      // Process each middleware in sequence
       for (const middlewareName of middlewares) {
         const mwStart = process.hrtime.bigint();
 
         if (syncMiddlewares[middlewareName]) {
-          // Sync middleware
           processedWebhook = syncMiddlewares[middlewareName](processedWebhook);
         } else if (asyncMiddlewares[middlewareName]) {
-          // Async middleware
           processedWebhook = await asyncMiddlewares[middlewareName](
             processedWebhook
           );
@@ -39,7 +36,6 @@ const pipelineWorker = new Worker(
       const endTime = process.hrtime.bigint();
       const totalDuration = Number(endTime - startTime) / 1000000;
 
-      // Pass to sending queue
       await job.updateData({
         ...job.data,
         processedWebhook,

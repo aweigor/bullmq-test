@@ -2,8 +2,6 @@ import { WebhookProducer } from "./producer.js";
 import { Queue } from "bullmq";
 import Table from "cli-table3";
 import chalk from "chalk";
-// import { pipelineWorker } from "./pipeline-worker.js";
-// import { pipelineWorkerGranular } from "./pipeline-worker-granular.js";
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -29,12 +27,10 @@ class PipelineBenchmark {
       middlewares
     );
 
-    // Wait for pipeline processing to complete
     const { elapsedTime } = await this.waitForPipelineCompletion(
       webhooks.length
     );
 
-    // Wait for granular pipeline processing to complete
     const { elapsedTimeGranular } =
       await this.waitForGranularPipelineCompletion(
         webhooks.length * middlewares.length
@@ -106,7 +102,7 @@ class PipelineBenchmark {
   }
 
   printResults(results) {
-    console.log(chalk.green("\n🎯 PIPELINE BENCHMARK RESULTS\n"));
+    console.log(chalk.green("\nPIPELINE BENCHMARK RESULTS\n"));
 
     const table = new Table({
       head: [
@@ -153,7 +149,7 @@ class PipelineBenchmark {
       current.throughput > best.throughput ? current : best
     );
 
-    console.log(chalk.yellow(`\n💡 Best performance: ${best.name}`));
+    console.log(chalk.yellow(`\n Best performance: ${best.name}`));
     console.log(chalk.yellow(`   Throughput: ${best.throughput} req/s`));
     console.log(chalk.yellow(`   Middlewares: ${best.middlewares}`));
   }
@@ -188,31 +184,22 @@ const scenarios = [
 ];
 
 async function main() {
-  // Start workers
-  //console.log(chalk.yellow("Starting workers..."));
-  // Workers are started when imported
-
-  // Give workers a moment to initialize
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   const benchmark = new PipelineBenchmark();
-  const testWebhooks = generateWebhooks(1000000);
+  const testWebhooks = generateWebhooks(100);
   const results = [];
 
   for (const scenario of scenarios) {
     const result = await benchmark.runScenario(
       scenario.name,
-      testWebhooks.slice(0, 20), // Smaller batch for quick testing
+      testWebhooks,
       scenario.middlewares
     );
     results.push(result);
   }
 
   benchmark.printResults(results);
-
-  // Close workers gracefully
-  // await pipelineWorker.close();
-  // await pipelineWorkerGranular.close();
 
   process.exit(0);
 }
