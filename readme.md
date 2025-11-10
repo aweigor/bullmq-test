@@ -1,124 +1,98 @@
-# Make scripts executable
+# Bullmq benchmark utility
 
-chmod +x deploy.sh run-benchmark.sh cleanup.sh
+## Description
 
-# Deploy everything
+This utility was designed to make a proof of concept for webhook distribution system on the topic of using bullmq as a processing queue for middlewares. It may be used for any other cases where various options of the queue job granularity persists. So the main question of the research is to perform one middleware per one bullmq job, or to perform the entire processing cycle of the object (many middlewares) per one bullmq job.
 
+## Insallation
+
+```
+npm install
+chmod +x deploy.sh run-benchmark.sh
+```
+
+## Running
+
+```
 ./deploy.sh
-
-# Run benchmark
-
 ./run-benchmark.sh
+```
 
-# Clean up
+## Latency Per Webhook Analysis
 
-./cleanup.sh
+```mermaid
+xychart-beta
+    title "Only Sync - Latency per Webhook"
+    x-axis ["1K", "10K", "100K"]
+    y-axis "Latency (ms)" 0 --> 60
+    line "Single" [23.44, 8.31, 6.80]
+    line "Granular" [55.73, 39.49, 28.74]
+```
 
-# Check OrbStack status
+```mermaid
+xychart-beta
+    title "Light Async - Latency per Webhook"
+    x-axis ["1K", "10K", "100K"]
+    y-axis "Latency (ms)" 0 --> 60
+    line "Single" [9.44, 5.45, 7.87]
+    line "Granular" [56.29, 35.23, 27.79]
+```
 
-orbctl status
+```mermaid
+xychart-beta
+    title "Heavy Async - Latency per Webhook"
+    x-axis ["1K", "10K", "100K"]
+    y-axis "Latency (ms)" 0 --> 40
+    line "Single" [9.06, 6.03, 6.38]
+    line "Granular" [33.86, 29.70, 26.94]
+```
 
-# Check Kubernetes nodes
+## Performance Results
 
-kubectl get nodes
+### Only Sync (validate, transform, addMetadata)
 
-# Check if we can access cluster
+**Latency per Webhook:**
 
-kubectl cluster-info
+| Load Size   | Single Queue | Granular Queue | Performance Difference |
+| ----------- | ------------ | -------------- | ---------------------- |
+| **1,000**   | 🟢 23.44ms   | 🔴 55.73ms     | **Single 2.4x faster** |
+| **10,000**  | 🟢 8.31ms    | 🔴 39.49ms     | **Single 4.8x faster** |
+| **100,000** | 🟢 6.80ms    | 🔴 28.74ms     | **Single 4.2x faster** |
 
-# View OrbStack dashboard
+**Trend:** Single queue gets significantly faster at scale
 
-open orbstack://dashboard
+---
 
-# View Kubernetes dashboard
+### Sync + Light Async (validate, transform, rateLimit)
 
-orbctl dashboard
+**Latency per Webhook:**
 
-# Check resource usage
+| Load Size   | Single Queue | Granular Queue | Performance Difference |
+| ----------- | ------------ | -------------- | ---------------------- |
+| **1,000**   | 🟢 9.44ms    | 🔴 56.29ms     | **Single 6.0x faster** |
+| **10,000**  | 🟢 5.45ms    | 🔴 35.23ms     | **Single 6.5x faster** |
+| **100,000** | 🟢 7.87ms    | 🔴 27.79ms     | **Single 3.5x faster** |
 
-orbctl stats
+**Trend:** Largest performance gap at medium loads
 
-# View logs for all pods
+---
 
-kubectl logs -l app=pipeline-worker --tail=10
-kubectl logs -l app=sender-worker --tail=10
+### Sync + Heavy Async (validate, transform, enrich, heavyProcessing)
 
-kubectl run test-producer --image=webhook-pipeline:latest --rm -it --restart=Never -- \
- node -e "
-const { WebhookProducer } = require('./src/producer.js');
-const producer = new WebhookProducer();
+**Latency per Webhook:**
 
-    async function test() {
-      const result = await producer.produceWebhook({
-        url: 'https://httpbin.org/post',
-        payload: { test: true }
-      }, ['validate', 'transform']);
+| Load Size   | Single Queue | Granular Queue | Performance Difference |
+| ----------- | ------------ | -------------- | ---------------------- |
+| **1,000**   | 🟢 9.06ms    | 🔴 33.86ms     | **Single 3.7x faster** |
+| **10,000**  | 🟢 6.03ms    | 🔴 29.70ms     | **Single 4.9x faster** |
+| **100,000** | 🟢 6.38ms    | 🔴 26.94ms     | **Single 4.2x faster** |
 
-      console.log('Test result:', result);
-    }
+**Trend:** Consistent 4x advantage for single queue
 
-    test().catch(console.error);
+```mermaid
+pie title Single vs Granular Performance Ratio
+    "Single Faster" : 75
+    "Granular Faster" : 25
+```
 
-"
-
-# Build the image
-
-docker build -t webhook-pipeline-benchmark .
-
-# If using Docker Desktop, the image is already available to Kubernetes
-
-# If using Minikube, load the image:
-
-minikube image load webhook-pipeline-benchmark
-
-# Install Docker Desktop from https://www.docker.com/products/docker-desktop/
-
-# Enable Kubernetes in Docker Desktop preferences
-
-# Verify
-
-kubectl get nodes
-
-# Deploy
-
-kubectl apply -f k8s/redis.yaml
-kubectl apply -f k8s/workers.yaml
-kubectl apply -f k8s/benchmark.yaml
-
-# Check results
-
-kubectl logs -f job/pipeline-benchmark
-
-# Test the producer manually
-
-kubectl run quick-test --image=webhook-pipeline:latest --image-pull-policy=Never --rm -it --restart=Never -- \
- node -e "
-const { WebhookProducer } = require('./src/producer.js');
-
-    async function test() {
-      console.log('🚀 Testing webhook producer...');
-      const producer = new WebhookProducer();
-
-      const result = await producer.produceWebhook({
-        url: 'https://httpbin.org/post',
-        payload: { test: true, timestamp: Date.now() }
-      }, ['validate', 'transform']);
-
-      console.log('✅ Producer test result:', result);
-
-      // Check if job made it to the queue
-      const queue = require('bullmq').Queue;
-      const webhookQueue = new queue('webhook-pipeline', {
-        connection: { host: 'redis', port: 6379 }
-      });
-
-      const counts = await webhookQueue.getJobCounts();
-      console.log('📊 Queue counts:', counts);
-    }
-
-    test().catch(err => {
-      console.error('❌ Test failed:', err);
-      process.exit(1);
-    });
-
-"
+Making multiple tasks in one bullmq job allows to achieve a significant increase in performance, so clearly a more profitable strategy will be processing the entire per cycle in one job. Various kubectl configurations were used in the research, but they did not make a significant contribution to the final result.
