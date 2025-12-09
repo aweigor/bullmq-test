@@ -27,9 +27,23 @@ export { CHILD_QUEUE_NAME, FLOW_PRODUCER_NAME, PARENT_QUEUE_NAME };
     }),
     BullModule.registerQueue({
       name: 'nested',
+      defaultJobOptions: {
+        backoff: {
+          type: 'exponential',
+          delay: 1000,
+        },
+        attempts: 3,
+      },
     }),
     BullModule.registerQueue({
       name: 'children',
+      defaultJobOptions: {
+        backoff: {
+          type: 'exponential',
+          delay: 1000,
+        },
+        attempts: 3,
+      },
     }),
     BullModule.registerFlowProducer({
       name: 'flow-producer',

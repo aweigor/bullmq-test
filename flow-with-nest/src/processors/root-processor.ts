@@ -17,6 +17,7 @@ export class RootProcessor extends WorkerHost {
     this.logger.debug({
       message: 'root job processing',
       jobData: job.data,
+      jobChildren: await job.getChildrenValues(),
     });
     console.log('RootProcessor');
     await job.updateData({
