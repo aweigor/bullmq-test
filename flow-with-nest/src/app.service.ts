@@ -1,6 +1,6 @@
 import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { FlowProducer, Queue, QueueEvents } from 'bullmq';
+import { FlowProducer, Queue } from 'bullmq';
 
 @Injectable()
 export class AppService {
@@ -20,7 +20,7 @@ export class AppService {
       'orange',
       'apple',
       'coconut',
-      'bear',
+      'beer',
       'strawberry',
       'watermelon',
     ].map((x, i) => {
@@ -29,7 +29,7 @@ export class AppService {
         name: x,
       };
     });
-    const flowJob = await this.flowProducer.add({
+    await this.flowProducer.add({
       name: 'main',
       queueName: 'root',
       data: {
@@ -41,6 +41,7 @@ export class AppService {
           data,
           queueName: 'nested',
           opts: {
+            removeOnFail: true,
             backoff: {
               type: 'exponential',
               delay: 1000,
@@ -50,18 +51,5 @@ export class AppService {
         };
       }),
     });
-    try {
-      await flowJob.job.waitUntilFinished(new QueueEvents('root'), 5000);
-    } catch (ex: any) {
-      this.logger.error(ex);
-      if (!Array.isArray(flowJob.children)) return;
-      for (const child of flowJob.children) {
-        const isCompleted = await child.job.isCompleted();
-        if (!isCompleted) {
-          // dlq
-          await child.job.remove();
-        }
-      }
-    }
   }
 }

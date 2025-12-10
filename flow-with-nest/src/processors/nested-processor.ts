@@ -58,7 +58,7 @@ export class NestedProcessor extends WorkerHost {
       success: true,
     });
     return {
-      text: 'hello',
+      success: true,
     };
   }
 }
