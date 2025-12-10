@@ -1,15 +1,12 @@
-import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
-import { FlowProducer, Queue } from 'bullmq';
+import { InjectFlowProducer } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
+import { FlowProducer } from 'bullmq';
 
 @Injectable()
 export class AppService {
-  private readonly logger = new Logger(AppService.name, { timestamp: true });
   constructor(
     @InjectFlowProducer('flow-producer')
     private flowProducer: FlowProducer,
-    @InjectQueue('root') private rootQueue: Queue,
-    @InjectQueue('nested') private nestedQueue: Queue,
   ) {}
   getHello(): string {
     return 'Hello World!';
